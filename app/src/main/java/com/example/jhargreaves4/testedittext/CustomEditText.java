@@ -12,6 +12,11 @@ import android.widget.Toast;
 
 public class CustomEditText extends EditText {
 
+    public static final String NewLineRawValue = "\n";
+    public static final String BackspaceKeyValue = "Backspace";
+    public static final String EnterKeyValue = "Enter";
+
+
     public CustomEditText(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
@@ -62,7 +67,7 @@ public class CustomEditText extends EditText {
                 if ((noPreviousSelection() && selectionStart < mPreviousSelectionStart)
                     || (!noPreviousSelection() && selectionStart == mPreviousSelectionStart)
                     || (mPreviousSelectionStart == 0 && selectionStart == 0)) {
-                    key = "Backspace";
+                    key = BackspaceKeyValue;
                 } else {
                     char enteredChar = CustomEditText.this.getText().charAt(selectionStart - 1);
                     key = String.valueOf(enteredChar);
@@ -77,16 +82,30 @@ public class CustomEditText extends EditText {
                 if (mComposedText != null) {
                     key = mComposedText;
                 } else {
-                    key = mCommittedText.isEmpty() ? "Backspace"
-                        : mCommittedText;
+                    key = keyValueFromString(mCommittedText);
                 }
             }
+            key = keyValueFromString(key);
             Toast.makeText(CustomEditText.this.getContext(), key, Toast.LENGTH_SHORT).show();
             return super.endBatchEdit();
         }
 
         private boolean noPreviousSelection() {
             return mPreviousSelectionStart == mPreviousSelectionEnd;
+        }
+
+        private String keyValueFromString(final String key) {
+            String returnValue;
+            switch (key) {
+                case "": returnValue = BackspaceKeyValue;
+                    break;
+                case NewLineRawValue: returnValue = EnterKeyValue;
+                    break;
+                default:
+                    returnValue = key;
+                    break;
+            }
+            return returnValue;
         }
     }
 
