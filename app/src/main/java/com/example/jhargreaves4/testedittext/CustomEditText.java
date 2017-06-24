@@ -54,16 +54,15 @@ public class CustomEditText extends EditText {
    *
    * It is up to the IME to decide when text changes state from 'composing' to 'committed',
    * however the stock Android keyboard, for example, changes text being composed to be committed
-   * when a user selects an auto-correction from the bar above the keyboard or presses 'space' to
-   * complete the word or text. In this case, our above logic with cursor positions does not apply,
+   * when a user selects an auto-correction from the bar above the keyboard or presses 'space' or 'enter
+   * to complete the word or text. In this case, our above logic with cursor positions does not apply,
    * as our cursor could be anywhere within the word being composed when a correction is selected,
    * and clearly selecting a single character from this correction would be the wrong thing to do.
    * It's fairly arbitrary, but we can set our keyPress to be the correction itself as this is what
    * the iOS implementation does.
-   * In the case where a user commits with a space, the stock IME first commits the composing text,
-   * and then commits a space afterwards, as a secondary commit within the batch edit. We of course
-   * want the keyPress entered by the user, so we take the second of these two commits as the keyPress
-   * in this case.
+   * In the case where a user commits with a space or enter, the stock IME first commits the composing text,
+   * and then commits a space or return afterwards, as a secondary commit within the batch edit. We of course
+   * want the keyPress entered by the user, so we take the second of these two commits as the keyPress.
    *
    * A final case is the case whereby a user has committed some text, and their cursor comes straight
    * after the word they have just committed with no trailing space, as is the default behavior. If a user
