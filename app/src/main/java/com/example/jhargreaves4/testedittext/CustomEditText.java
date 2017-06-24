@@ -27,7 +27,51 @@ public class CustomEditText extends EditText {
                 true);
     }
 
-    private class InternalInputConnection extends InputConnectionWrapper {
+  /**
+   * This class wraps the {@link InputConnection} as returned by
+   * {@link EditText#onCreateInputConnection(EditorInfo)} of the underlying {@link EditText}
+   * The job of this class is to determine the key pressed by the soft keyboard.
+   *
+   * Firstly, we can make some deductions about the keyPress based on changes to the position of the
+   * input cursor before and after the edit. We know that if there was no text selection before
+   * the edit, and the cursor moves backwards, then it must be a delete; equally if it moves forwards
+   * by a character, then we deduce the key input was that character.
+   * We also know if no text selection before the edit and the cursor was at the beginning of the input before
+   * and still is after,then it must also be a delete, i.e. an 'empty delete' where no text gets deleted.
+   * N.B. we are making the assumption that {@link InputConnection#endBatchEdit()} will fire in this case case.
+   *
+   * In cases where there was a text selection before the edit, if the start of the selection is the same
+   * after the edit as it was before, then we know it is a straight delete, if it is not the same, i.e.
+   * it has moved forward a character, then we take that character to be the key input.
+   *
+   * With {@link EditText}s, text can be in two different states in the input itself, 'committed' &
+   * currently 'composing'. N.B there is no composing text state when auto-correct is disabled, text
+   * will be committed straight away character by character.
+   * When a user is composing a word we get a callback to {@link InputConnection#setComposingText(CharSequence, int)}
+   * with the entire word being composed. For example, composing 'hello' would result callbacks with
+   * 'h', 'he', 'hel' 'hell', 'hello'. Our above logic for deriving the keyPress based on cursor position
+   * handles this case. However we need additional logic surrounding the case whereby text can be committed.
+   *
+   * It is up to the IME to decide when text changes state from 'composing' to 'committed',
+   * however the stock Android keyboard, for example, changes text being composed to be committed
+   * when a user selects an auto-correction from the bar above the keyboard or presses 'space' to
+   * complete the word or text. In this case, our above logic with cursor positions does not apply,
+   * as our cursor could be anywhere within the word being composed when a correction is selected,
+   * and clearly selecting a single character from this correction would be the wrong thing to do.
+   * It's fairly arbitrary, but we can set our keyPress to be the correction itself as this is what
+   * the iOS implementation does.
+   * In the case where a user commits with a space, the stock IME first commits the composing text,
+   * and then commits a space afterwards, as a secondary commit within the batch edit. We of course
+   * want the keyPress entered by the user, so we take the second of these two commits as the keyPress
+   * in this case.
+   *
+   * A final case is the case whereby a user has committed some text, and their cursor comes straight
+   * after the word they have just committed with no trailing space, as is the default behavior. If a user
+   * is to input a character as to start a new word, the stock IME will first commit a space to the
+   * input, and then set the composing text to be the character the user entered. In this case we
+   * choose our onKeyPress to be the new composing character.
+   */
+  private class InternalInputConnection extends InputConnectionWrapper {
         int mPreviousSelectionStart;
         int mPreviousSelectionEnd;
         // Can be multiple commits in a batch edit
@@ -74,11 +118,6 @@ public class CustomEditText extends EditText {
                 }
             }
             else {
-                // If during the batch edit we have both committed & composed
-                // then the IME may have committed a space to start a new word,
-                // before creating a new composing region with the user's keyboard input
-                // We want to take the composed input in this case as that's the key
-                // they actually pressed
                 if (mComposedText != null) {
                     key = mComposedText;
                 } else {
